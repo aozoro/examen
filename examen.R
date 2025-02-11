@@ -1,3 +1,104 @@
+
+
+install.packages("ChainLadder")
+library(ChainLadder)
+
+#DATOS DESACOMULADOS
+c0<-c(4946974,3721237,894717,207760,206704,62124,64813,14840,11130,14813)
+c1<-c(6346746,3246406,723222,141797,67824,36603,42742,11186,11646)
+c2<-c(6269090,2976223,847043,262768,152703,65444,53545,8924)
+c3<-c(6863016,2683224,722532,190653,132976,88340,43329)
+c4<-c(6778886,2746229,653894,273395,230288,105224)
+c5<-c(6184793,2828338,572765,244899,104957)
+c6<-c(6600184,2893207,563114,225517)
+c7<-c(6288066,2440103,528043)
+c8<-c(5290793,2357936)
+c9<-c(5675568)
+
+vpf<-ibnrchl(c(c0,c1,c2,c3,c4,c5,c6,c7,c8,c9))
+sum(vpf)
+
+#CONSIDERANDO ETTI
+ETI.V<-c(0.00024,0.00031,0.00052,0.00120,0.00175,0.00749,0.00963,0.00985,0.00987)
+i.renta<-numeric(length(ETI.V))
+for (i in 1:length(ETI.V)) {i.renta[i]<-(1+ETI.V[i])^(-i)}
+prov<-sum(vpf*i.renta);prov
+
+#CON FLUJOS
+tf<-numeric(length(ETI.V))
+tf[1]<-ETI.V[1]
+for (i in 2:length(ETI.V)) {tf[i]<-(((1+ETI.V[i])^(i))/((1+ETI.V[i-1])^(i-1)))-1}
+
+f.fluxe<-numeric(length(ETI.V))
+for (i in 1:length(ETI.V)) { f.fluxe[i]<-(1-(1+tf[i])^(-1))/(log(1+tf[i]))}
+
+i.fluxe<-rep(1,length(ETI.V))
+for (i in 2:length(ETI.V)) {i.fluxe[i]<-(1+ETI.V[i-1])^(-i+1)}
+
+provi<-sum(vpf*i.fluxe*f.fluxe);provi
+
+#MODELO DE MACK
+C0<-cumsum(c0)
+C1<-c(cumsum(c1),NA)
+C2<-c(cumsum(c2),NA,NA)
+C3<-c(cumsum(c3),NA,NA,NA)
+C4<-c(cumsum(c4),NA,NA,NA,NA)
+C5<-c(cumsum(c5),NA,NA,NA,NA,NA)
+C6<-c(cumsum(c6),NA,NA,NA,NA,NA,NA)
+C7<-c(cumsum(c7),NA,NA,NA,NA,NA,NA,NA)
+C8<-c(cumsum(c8),NA,NA,NA,NA,NA,NA,NA,NA)
+C9<-c(cumsum(c9),NA,NA,NA,NA,NA,NA,NA,NA,NA)
+
+C<-matrix(c(C0,C1,C2,C3,C4,C5,C6,C7,C8,C9),ncol = 10)
+C<-t(C); C<-as.triangle(C)
+
+mhc<-MackChainLadder(C);mhc
+
+#MACK
+desac<-cum2incr(mhc$FullTriangle)
+vpf<-numeric(dim(C)[1]-1)
+
+for (k in 1:(dim(C)[1] - 1)) 
+  { futuro<-(row(desac)+col(desac)-1)==(dim(C)[1]+k)
+  vpf[k]<-sum(desac[futuro])
+}
+
+proveti<-sum(vpf*i.renta);proveti
+proflux<-sum(vpf*i.fluxe*f.fluxe);proflux
+
+#POISSON
+poi<-glmReserve(C,var.power = 1,link.power = 0,mse.method = "formula");poi
+
+desac<-cum2incr(poi$FullTriangle)
+vpf<-numeric(dim(C)[1]-1)
+
+for (k in 1:(dim(C)[1] - 1)) 
+{ futuro<-(row(desac)+col(desac)-1)==(dim(C)[1]+k)
+vpf[k]<-sum(desac[futuro])
+}
+
+proveti<-sum(vpf*i.renta);proveti
+proflux<-sum(vpf*i.fluxe*f.fluxe);proflux
+
+
+#GAMMA
+gamma<-glmReserve(C,var.power = 2, link.power = 0, mse.method = "formula");gamma
+
+desac<-cum2incr(gamma$FullTriangle)
+vpf<-numeric(dim(C)[1]-1)
+
+for (k in 1:(dim(C)[1] - 1)) 
+{ futuro<-(row(desac)+col(desac)-1)==(dim(C)[1]+k)
+vpf[k]<-sum(desac[futuro])
+}
+
+proveti<-sum(vpf*i.renta);proveti
+proflux<-sum(vpf*i.fluxe*f.fluxe);proflux
+
+
+
+
+
 # ------------------------------------------------------------------------------
 # Supuesto 1
 # ------------------------------------------------------------------------------
